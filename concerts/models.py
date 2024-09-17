@@ -37,16 +37,6 @@ class venue:
     city : str
 '''
 
-# The association table
-concerts_table = Table(
-    'concerts',
-    Base.metadata,
-    Column('id', Integer, primary_key=True),
-    Column('band_id', Integer, ForeignKey('bands.id')),
-    Column('venue_id', Integer, ForeignKey('venues.id')),
-    Column('concert_date', Date)
-)
-
 # Band Modal
 
 class Band(Base):
@@ -55,14 +45,32 @@ class Band(Base):
     name = Column(String(255) , nullable = False)
     hometown = Column(String(255) , nullable = False)
     # Defining the relationship
-    venues = relationship(
-        'Venue', 
-        secondary = concerts_table,
-        back_populates = 'bands'
+    concerts = relationship(
+        'Concert', 
+        back_populates = 'band'
     )
+
+    def concerts(self):
+        return self.concerts
+
+    def venues(self):
+        return [concert.venue for concert in self.concerts]
+    
+    def play_in_venue(self, venue, date):
+        concert = Concert(date=date, band=self, venue=venue)
+        session.add(concert)
+        session.commit()
+
+    def all_introductions(self):
+        return [concert.introduction() for concert in self.concerts]
+
+    @classmethod
+    def most_performances(cls):
+        return session.query(cls).join(Concert).group_by(cls.id).order_by(func.count().desc()).first()
 
     def __rep__(self):
         return f"<Band : {self.name}>"
+    
     
 # Venue Modal
 
@@ -72,14 +80,61 @@ class Venue(Base):
     title = Column(String(255) , nullable = False)
     city = Column(String(255) , nullable = False)
     # Defining the relationship
-    bands = relationship(
-        'Band',
-        secondary = concerts_table,
-        back_populates = 'venues'
+    concerts = relationship(
+        'Concert',
+        back_populates = 'venue'
     )
 
-    def __rep__(self):
-        return f"<Venue : {self.title}>"
+    def concerts(self):
+        return self.concerts
+
+    def bands(self):
+        return [concert.band for concert in self.concerts]
+    
+    def concert_on(self, date):
+        return session.query(Concert).filter_by(date=date, venue=self).first()
+
+    def most_frequent_band(self):
+        band_counts = {}
+        for concert in self.concerts:
+            band = concert.band
+            if band in band_counts:
+                band_counts[band] += 1
+            else:
+                band_counts[band] = 1
+        return max(band_counts, key=band_counts.get)
+    
+    def __repr__(self):
+        return f'Venue: {self.title}'
+    
+# Concert Modal
+
+class Concert(Base):
+    __tablename__ = 'concerts'
+    id = Column(Integer() , primary_key = True)
+    name = Column(String(255) , nullable = False)
+    date = Column(String(50) , nullable = False)
+    venue_id = Column(Integer, ForeignKey('venues.id'))
+    band_id = Column(Integer, ForeignKey('bands.id'))
+    venue = relationship('Venue', back_populates='concerts')
+    band = relationship('Band', back_populates='concerts')
+
+    def band(self):
+        return self.band
+
+    def venue(self):
+        return self.venue
+    
+    def hometown_show(self):
+        return self.band.hometown == self.venue.city
+
+    def introduction(self):
+        return f"Hello {self.venue.city}!!!!! We are {self.band.name} and we're from {self.band.hometown}"
+    
+    def __repr__(self):
+        return f'Concert {self.name}'
+
+
 
 
 # Base class
