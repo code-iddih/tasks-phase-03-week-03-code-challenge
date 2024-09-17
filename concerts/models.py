@@ -37,6 +37,16 @@ class venue:
     city : str
 '''
 
+# The association table
+concerts_table = Table(
+    'concerts',
+    Base.metadata,
+    Column('id', Integer, primary_key=True),
+    Column('band_id', Integer, ForeignKey('bands.id')),
+    Column('venue_id', Integer, ForeignKey('venues.id')),
+    Column('concert_date', Date)
+)
+
 # Band Modal
 
 class Band(Base):
@@ -44,9 +54,15 @@ class Band(Base):
     id = Column(Integer() , primary_key = True)
     name = Column(String(255) , nullable = False)
     hometown = Column(String(255) , nullable = False)
+    # Defining the relationship
+    venues = relationship(
+        'Venue', 
+        secondary = concerts_table,
+        back_populates = 'bands'
+    )
 
     def __rep__(self):
-        return f"<The Customer is : {self.name}>"
+        return f"<Band : {self.name}>"
     
 # Venue Modal
 
@@ -55,9 +71,15 @@ class Venue(Base):
     id = Column(Integer() , primary_key = True)
     title = Column(String(255) , nullable = False)
     city = Column(String(255) , nullable = False)
+    # Defining the relationship
+    bands = relationship(
+        'Band',
+        secondary = concerts_table,
+        back_populates = 'venues'
+    )
 
     def __rep__(self):
-        return f"<The Product is : {self.name}>"
+        return f"<Venue : {self.title}>"
 
 
 # Base class
